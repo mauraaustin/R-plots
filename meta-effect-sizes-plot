@@ -1,0 +1,33 @@
+###### set up new dataframe for plot #####
+##full dataframe should have raw data from all experiments, with a column that indicates experiment number 
+
+meta_plot = rbind(data.frame(summary(all_data_frame)[,c('exp','yi','ci.lb','ci.ub')]),
+                  data.frame(rma(yi, vi, data = all_data_frame)[c('beta','ci.lb','ci.ub')]) %>% 
+                    mutate(exp = 'RE Model', yi = beta) %>% 
+                    select(-beta)) %>% 
+  mutate(yi = round(yi, 2), ci.lb = round(ci.lb, 2), ci.ub = round(ci.ub, 2),
+         effect = factor(ifelse(exp !="RE Model", 'study','meta'), levels=c('study','meta')),
+         CI = paste(yi, " [", sprintf('%.2f',ci.lb), ", ", ifelse(ci.ub>0, " ", ""), sprintf('%.2f',ci.ub), "]",sep = ""),
+         exp = factor(exp, rev(levels(factor(exp))))) 
+         
+###### draw forest plot ######
+
+ggplot(data=meta_plot, aes(y=exp, x=yi, xmin=ci.lb, xmax=ci.ub), color='black')+ 
+  #scale_color_manual(values=c("#fcc226","#e8a400","#c98b00","#ac7200","#0888a0","#3ca2bb","#5cbdd7","#7ad9f4","#FF0000"))+
+  geom_errorbar(width=0, size=1.5, alpha=1)+
+  geom_point(data=subset(meta_plot, exp!="RE Model"), size=2, shape=21, fill='white', stroke=1, color='black')+ 
+  geom_text(aes(label=CI, x=0.60, y=exp),size=6, color='black') +
+  geom_point(data=subset(meta_plot, exp=="RE Model"), size=8, shape=18, color="black")+
+  facet_grid(effect ~ ., scales='free', space='free', shrink=TRUE)+
+  scale_x_continuous(limits=c(-1,1.2), breaks=c(-0.5,0, 0.5), name="\nStandardized Mean Difference\n(Hedge's G)")+
+  geom_vline(xintercept=0, color="black", size=0.25)+
+  geom_vline(xintercept=c(-0.5, 0.5), color="grey", linetype="dashed", alpha=.5)+
+  theme_classic()+
+  theme(strip.text.y = element_blank(), 
+        legend.text = element_text(size=14),
+        legend.position='top',
+        axis.line.y = element_blank(), 
+        axis.ticks.y=element_blank(),
+        panel.spacing=unit(2.5, "lines"),
+        axis.text=element_text(size=18),
+        axis.title.y = element_blank())
